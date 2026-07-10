@@ -6,8 +6,8 @@ import pickle
 # Page Config
 # -----------------------------
 st.set_page_config(
-    page_title="Insurance Predictor",
-    page_icon="🛡️",
+    page_title="Employee Retention Predictor",
+    page_icon="💼",
     layout="wide"
 )
 
@@ -24,120 +24,132 @@ except:
 # Load Model
 # -----------------------------
 try:
-    model = pickle.load(open("model.pkl", "rb"))
-except:
-    st.error("model.pkl not found")
+    with open("model.pkl", "rb") as f:
+        model = pickle.load(f)
+except Exception as e:
+    st.error(f"Model Error: {e}")
     st.stop()
 
 # -----------------------------
 # Load Dataset
 # -----------------------------
 try:
-    df = pd.read_csv("insurance_data.csv")
+    df = pd.read_csv("HR_comma_sep.csv")
 except:
     df = None
 
 # -----------------------------
-# Hero Section
+# Hero
 # -----------------------------
 st.markdown("""
-<div class='hero'>
-<h1>🛡️ Life Insurance Predictor</h1>
-<p>Predict whether a customer is likely to purchase life insurance using Machine Learning.</p>
+<div class="hero">
+<h1>💼 Employee Retention Predictor</h1>
+<p>Predict whether an employee is likely to stay or leave the company.</p>
 </div>
 """, unsafe_allow_html=True)
 
 # -----------------------------
-# Metrics
+# Input Form
 # -----------------------------
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown(f"""
-    <div class='card'>
-    <div class='card-title'>Dataset Size</div>
-    <div class='card-value'>{len(df) if df is not None else 0}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    satisfaction = st.slider("Satisfaction Level", 0.0, 1.0, 0.50)
+    evaluation = st.slider("Last Evaluation", 0.0, 1.0, 0.70)
+    projects = st.number_input("Number of Projects", 2, 10, 4)
+    monthly_hours = st.number_input("Average Monthly Hours", 90, 320, 200)
+    years = st.number_input("Years at Company", 1, 10, 3)
 
 with col2:
-    st.markdown("""
-    <div class='card'>
-    <div class='card-title'>Algorithm</div>
-    <div class='card-value'>Logistic Regression</div>
-    </div>
-    """, unsafe_allow_html=True)
+    accident = st.selectbox("Work Accident", ["No", "Yes"])
+    promotion = st.selectbox("Promotion in Last 5 Years", ["No", "Yes"])
 
-with col3:
-    st.markdown("""
-    <div class='card'>
-    <div class='card-title'>Prediction</div>
-    <div class='card-value'>Binary</div>
-    </div>
-    """, unsafe_allow_html=True)
+    department = st.selectbox(
+        "Department",
+        [
+            "sales",
+            "accounting",
+            "hr",
+            "technical",
+            "support",
+            "management",
+            "IT",
+            "product_mng",
+            "marketing",
+            "RandD"
+        ]
+    )
 
-st.write("")
+    salary = st.selectbox(
+        "Salary",
+        ["low", "medium", "high"]
+    )
+
+# Convert values
+accident = 1 if accident == "Yes" else 0
+promotion = 1 if promotion == "Yes" else 0
 
 # -----------------------------
-# Prediction
+# Predict
 # -----------------------------
-st.markdown("<div class='predict-box'>", unsafe_allow_html=True)
-
-st.subheader("Prediction")
-
-age = st.slider(
-    "Select Age",
-    18,
-    80,
-    35
-)
-
 if st.button("Predict"):
 
-    probability = model.predict_proba([[age]])[0][1]
-    prediction = model.predict([[age]])[0]
+    input_df = pd.DataFrame({
+        "satisfaction_level":[satisfaction],
+        "last_evaluation":[evaluation],
+        "number_project":[projects],
+        "average_montly_hours":[monthly_hours],
+        "time_spend_company":[years],
+        "Work_accident":[accident],
+        "promotion_last_5years":[promotion],
+        "Department":[department],
+        "salary":[salary]
+    })
 
-    st.progress(float(probability))
+    try:
 
-    st.write(f"### Probability : {probability*100:.2f}%")
+        probability = model.predict_proba(input_df)[0][1]
+        prediction = model.predict(input_df)[0]
 
-    if prediction == 1:
+        st.progress(float(probability))
 
-        st.markdown(f"""
-        <div class='success-box'>
-        <h3>✅ Customer is likely to Buy Insurance</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        st.metric(
+            "Probability of Leaving",
+            f"{probability*100:.2f}%"
+        )
 
-    else:
+        if prediction == 1:
 
-        st.markdown(f"""
-        <div class='warning-box'>
-        <h3>❌ Customer is unlikely to Buy Insurance</h3>
-        </div>
-        """, unsafe_allow_html=True)
+            st.markdown("""
+            <div class="warning-box">
+            <h3>⚠ Employee is likely to Leave</h3>
+            </div>
+            """, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
+        else:
+
+            st.markdown("""
+            <div class="success-box">
+            <h3>✅ Employee is likely to Stay</h3>
+            </div>
+            """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(e)
 
 # -----------------------------
 # Dataset
 # -----------------------------
 if df is not None:
 
-    st.write("")
-
     st.subheader("Dataset Preview")
-
-    st.dataframe(
-        df.head(10),
-        use_container_width=True
-    )
+    st.dataframe(df.head(), use_container_width=True)
 
 # -----------------------------
 # Footer
 # -----------------------------
 st.markdown("""
-<div class='footer'>
-Made with ❤️ using Streamlit
+<div class="footer">
+Employee Retention Prediction using Logistic Regression
 </div>
 """, unsafe_allow_html=True)
